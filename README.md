@@ -2,6 +2,11 @@
 Simple and lightweight property and configuration loading using elegant annotations in Java
 
 ```java
+
+import jprops.configuration.InsufficientConfigurationException;
+import jprops.configuration.PropertyLoader;
+import jprops.configuration.annotations.LoadProperty;
+
 class ConfigurationExample {
 
   /*
@@ -10,23 +15,23 @@ class ConfigurationExample {
    */
   
   // Load property value by name
-  @ConfigProperty( "someString" )
+  @LoadProperty( "someString" )
   public static String someStringValue;
   
   // Define type of property value for conversion (default is String)
-  @ConfigProperty( value="intValue", type=ConfigProperty.Type.INT )
+  @LoadProperty( value="intValue", type=ConfigProperty.Type.INT )
   private static int someIntValue;
   
   // Define required properties. An Exception will be thrown, in case it's not provided.
-  @ConfigProperty( value="required", required=true )
+  @LoadProperty( value="required", required=true )
   protected static String requiredValue;
   
   // Define the URI or location of your properties file (default is 'config.properties')
-  @ConfigProperty( value="fromAnotherFile", uri="application.properties" )
+  @LoadProperty( value="fromAnotherFile", res="application.properties" )
   public static String fromAnotherFile;
   
   // Use default values in case a property is not provided
-  @ConfigProperty( value="defaultValue", defaultValue="none", required=false )
+  @LoadProperty( value="defaultValue", defaultValue="none", required=false )
   private static String defaultValue;
   
   // Or any other function in the programs lifecycle
@@ -47,11 +52,11 @@ class ConfigurationExample {
 Annotated fields must be **static**. Their visibility is irrelevant.
 
 ```java
-@ConfigProperty(
+@LoadProperty(
   value="...",                // name of property
   defaultValue="...",         // default value in case property is not provided
   required=true|false,        // whether or not the property must be provided (will throw Exception if violated)
-  uri="...",                  // URI or location of .properties file (relative to classpath)
+  res="...",                  // URI or location of .properties file (relative to classpath)
   type=ConfigProperty.Type.*  // Type to which the String value will be converted to
 )
 

@@ -1,4 +1,4 @@
-package configuration.properties;
+package jprops.configuration;
 
 
 /**

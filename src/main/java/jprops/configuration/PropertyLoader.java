@@ -1,5 +1,7 @@
 package jprops.configuration;
 
+import jprops.configuration.annotations.LoadProperty;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,8 +10,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Properties;
 import java.util.stream.Stream;
-
-import jprops.configuration.annotations.LoadProperty;
 
 /**
  * Loads configuration and "injects" them into annotated static class fields
@@ -32,65 +32,69 @@ public class PropertyLoader {
 	 */
 	public static void loadProperties(final Class<?>... classes) throws InsufficientConfigurationException, FileNotFoundException,IllegalArgumentException, IllegalAccessException, IOException {
 
+		// all fields being static and annotated with @LoadProperty will be collected in here
 		final LinkedList<Field> fields = new LinkedList<>();
 
 		/*
 		 * Collect all fields of classes which are static and annotated with @LoadProperty
 		 */
 		for (final Class<?> c : classes) {
-			// Stream of fields of class
+			// fields of current class as stream
 			Stream.of(c.getDeclaredFields())
-				// only fields annotated with @LoadProperty
+				// filter fields annotated with @LoadProperty
 				.filter(field -> field.isAnnotationPresent(LoadProperty.class))
-				// only static fields
+				// filter static fields
 				.filter(field -> java.lang.reflect.Modifier.isStatic(field.getModifiers()))
-				// append them to list
-				.forEach(field -> fields.add(field));
+				// add them to list
+				.forEach(fields::add);
 		}
 
 
-		final HashMap<String, Properties> loadedProperties = new HashMap<>();
+		final HashMap<String, Properties> propertiesCache = new HashMap<>();
 		/*
 		 *  Iterate over fields and read configurations
 		 */
 		for (final Field field : fields) {
+
+			// make non-puplic fields accessible
 			field.setAccessible(true);
 			final LoadProperty annotation = field.getAnnotation(LoadProperty.class);
 
+			// read resource attribute from fields annotation
 			final String file = annotation.res();
-			Properties props = null;
+			Properties props;
 
 			/*
-			 * Get requested properties file
+			 * Get requested file (*.properites).
 			 */
-			if (loadedProperties.containsKey(file)) {
-				// CASE 1: properties have aleady been loaded
-				props = loadedProperties.get(file);
+			if (propertiesCache.containsKey(file)) {
+				// CASE 1: properties-file has already been loaded
+				props = propertiesCache.get(file);
 			} else {
-				// CASE 2: properties are not loaded yet, try to load them
+				// CASE 2: properties are not loaded yet, try to load file
 				props = loadFile(file); // may fail
-				// store in case this resource in requested again (see CASE 1)
-				loadedProperties.put(file, props);
+				// store in case this resource in requested again (in CASE 1)
+				propertiesCache.put(file, props);
 			}
 
 			/*
 			 * Retrieve value from properties
 			 */
-			String value = null;
+			String value;
 			if(props.containsKey(annotation.value())) {
-				// value is contained by properties, retrieve get it
+				// value is defined in file, retreive it
 				value = (String) props.get(annotation.value());
 			} else if (annotation.required()) {
-				// Oh no, it's required to be set in properties, but it isn't!
-				// The configuration must be insufficient
+				// Oh no, it's a required value, but not defined in file!
+				// this configuration is insufficient
 				throw new InsufficientConfigurationException(file, annotation.value());
 			} else {
-				// value is not set in properties and not required to be, use default value
+				// the value is neither defined in file, nor required. Just use the default value.
 				value = annotation.defaultValue();
 			}
 
 			/*
-			 * Now set the field to the retrieved value
+			 * Now set the current field to its retrieved value
 			 */
 			switch (annotation.type()) {
 			case BOOLEAN:
@@ -125,6 +129,8 @@ public class PropertyLoader {
 	 */
 	private static Properties loadFile(final String file) throws FileNotFoundException,  IOException {
 		final Properties props = new Properties();
+
+		// load file relative to classpath
 		final InputStream input = PropertyLoader.class.getClassLoader().getResourceAsStream(file);
 
 		if (input == null)

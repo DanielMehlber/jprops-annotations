@@ -19,9 +19,8 @@ public @interface LoadProperty {
 	/**
 	 * These types are supported and can be parsed
 	 * @author danielmehlber
-	 *
 	 */
-	public enum Type {
+    enum Type {
 		STRING,
 		INT,
 		BOOLEAN,
